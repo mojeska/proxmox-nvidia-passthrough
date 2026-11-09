@@ -1,0 +1,12 @@
+# Caddy on another box in front of Open WebUI. Caddy handles the websockets on its own.
+# With a public domain, Caddy gets a Let's Encrypt certificate automatically.
+# For an internal name, point "tls" at your own ACME CA (step-ca, for example).
+ai.example.lan {
+	tls {
+		issuer acme {
+			dir https://ca.example.lan:9000/acme/acme/directory
+			trusted_roots /etc/caddy/root-ca.crt
+		}
+	}
+	reverse_proxy 192.0.2.50:8080
+}
