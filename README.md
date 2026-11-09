@@ -7,7 +7,7 @@ Tested in November 2026 with:
 | Piece | Version |
 | --- | --- |
 | Host | Proxmox VE 9.2, kernel 7.0.14, AMD Ryzen 7 8700G (its Radeon 780M stays with the host) |
-| GPU | NVIDIA GeForce RTX 5070 Ti, 16 GB |
+| GPU | NVIDIA GeForce RTX 5070 Ti, 16 GB, in an OCuLink dock (PCIe 4.0 x4) |
 | VM | Ubuntu Server 24.04.5, kernel 6.8 |
 | Driver | `nvidia-driver-595-open` 595.99.02 (CUDA 13.2) |
 | Software | Ollama 0.40.15, Open WebUI (`main`), Docker 29.1 from Ubuntu's repo |
@@ -249,7 +249,7 @@ The Ollama API has no authentication. Anyone who can reach port 11434 can run or
 
 **The reset problem on RTX 50-series cards.** Some Blackwell cards don't reset cleanly when the VM stops, and the next start hangs, sometimes taking the host with it. My earlier card on another host had issues, so I tested this one with several full stop/start cycles (`qm shutdown` then `qm start`, not just a reboot inside the guest). The host log showed `reset done` each time, and the GPU worked after every start. Run the same test before you rely on it.
 
-**PCIe link narrower than the slot.** `LnkSta: Speed 16GT/s (downgraded), Width x4 (downgraded)` on a card that's capable of x16. On my board, the x16 slot is wired for fewer lanes. Once a model is in GPU memory this hardly matters for chat speed. It slows model loading, and it really hurts models that don't fit in VRAM and spill over to system RAM. Check your board's manual for lane sharing with the M.2 slots, or a bifurcation setting.
+**PCIe link shows x4.** `LnkSta: Speed 16GT/s (downgraded), Width x4 (downgraded)` on a card that's capable of x16. My card is in an external dock connected by **OCuLink**, which carries PCIe 4.0 x4 at most, so this is expected and passthrough works the same. Once a model is in GPU memory, the narrow link hardly affects chat speed. It slows model loading, and it really hurts models that don't fit in VRAM and spill over to system RAM. With the card in a motherboard slot, x4 instead points to lane sharing with the M.2 slots or a bifurcation setting.
 
 **First generation is slow.** The first run after loading a model was 8 tokens/s, and the runs after it were about 80. Measure from the second run.
 
