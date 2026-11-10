@@ -126,7 +126,7 @@ qm create 115 --name ai-vm --ostype l26 --machine q35 --bios ovmf \
   --cpu host --sockets 1 --cores 12 --memory 49152 --balloon 0 \
   --scsihw virtio-scsi-single --scsi0 local-lvm:300,discard=on,iothread=1,ssd=1 \
   --ide2 local:iso/ubuntu-24.04.5-live-server-amd64.iso,media=cdrom \
-  --net0 virtio,bridge=vmbr0 --agent 1 \
+  --net0 virtio,bridge=vmbr0 --agent 1 --onboot 1 \
   --hostpci0 mapping=rtx5070ti,pcie=1 --boot "order=scsi0;ide2" --vga std
 qm start 115
 ```
@@ -136,6 +136,7 @@ A few notes on those choices:
 - `pre-enrolled-keys=0` leaves Secure Boot off. With it on, you have to enrol the NVIDIA driver's signing key (MOK) at the console after installing it. It's doable, but it's one more thing to go wrong, and this VM's only job is running models.
 - `--vga std` keeps the Proxmox console working for the install. The NVIDIA card isn't the primary display (`x-vga` is off), which is what you want for compute.
 - Size it to taste. My host has 16 threads and 60 GB of RAM. Models live on disk, and they add up quickly, so don't be stingy with storage.
+- `--onboot 1` starts the VM when the host boots. I forgot it the first time, and only noticed when I went looking (it's an easy one to miss).
 
 On the host, `dmesg | grep vfio` should show the card being reset cleanly when the VM starts.
 
@@ -254,6 +255,8 @@ Keep in mind the Ollama API has no authentication at all. Anyone who can reach p
 **The RTX 50-series reset problem.** Some Blackwell cards don't reset cleanly when the VM stops, and the next start hangs (sometimes taking the host with it). Given my other card's history, I tested this one with several full stop/start cycles (`qm shutdown` then `qm start`, not just a reboot inside the guest). The host log showed `reset done` every time, and the GPU worked after each start. I'm not sure if that's this card, the newer kernel or luck, so run the same test before you rely on it.
 
 **PCIe link shows x4.** `LnkSta: Speed 16GT/s (downgraded), Width x4 (downgraded)` on a card that can do x16. My card is in an external dock connected by OCuLink, which tops out at PCIe 4.0 x4, so this is expected and passthrough doesn't care. Once a model is in GPU memory it hardly affects chat speed. Where you'll feel it is model loading, and models too big for VRAM that spill over to system RAM. If your card is in a motherboard slot and shows x4, check the manual for lanes shared with the M.2 slots, or a bifurcation setting.
+
+**"Device or resource busy" when starting the VM.** I stopped the VM and started it again straight away, and the start failed with `vfio 0000:01:00.0: Could not open '/dev/vfio/15': Device or resource busy`. Nothing was actually wrong; the old QEMU process just hadn't finished letting go of the card. A few seconds later the card was free, and the next start worked fine. So give it a few seconds between stop and start (or use Reboot, which handles it for you). If it's still busy after a minute, `fuser -v /dev/vfio/<group>` on the host will tell you what's holding it.
 
 **The first run is slow.** The first generation after loading a model came in at 8 tokens/s, and every run after that was about 80. Measure from the second run, or you'll go chasing a problem that isn't there.
 
